@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#050508"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Volaris X"/>
+<link rel="manifest" href="/manifest.json"/>
+<title>Volaris X</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #050508;
+  --surface:   #0c0c14;
+  --surface2:  #111120;
+  --border:    #1a1a2e;
+  --cyan:      #00d4ff;
+  --purple:    #7b2fff;
+  --magenta:   #c700ff;
+  --green:     #00ff88;
+  --red:       #ff2d6b;
+  --text:      #e0e0f0;
+  --muted:     #6b6b8a;
+  --glow-c:    rgba(0,212,255,0.15);
+  --glow-p:    rgba(123,47,255,0.15);
+  --orbitron:  'Orbitron', monospace;
+  --rajdhani:  'Rajdhani', sans-serif;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--rajdhani); overflow-x: hidden; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Animated grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at 20% 0%, rgba(123,47,255,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(0,212,255,0.06) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Scanline overlay */
+.scanlines {
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none; z-index: 1000;
+}
+
+header {
+  position: relative; z-index: 10;
+  padding: 20px 20px 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.logo-wrap { display: flex; flex-direction: column; gap: 2px; }
+
+.logo {
+  font-family: var(--orbitron);
+  font-weight: 900; font-size: 22px;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #00d4ff, #7b2fff, #c700ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(0,212,255,0.4));
+}
+
+.logo-sub {
+  font-family: var(--orbitron); font-size: 8px; letter-spacing: 4px;
+  color: var(--muted); text-transform: uppercase;
+}
+
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+.status-pill {
+  font-family: var(--orbitron); font-size: 8px; font-weight: 700;
+  padding: 4px 10px; border-radius: 2px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  border: 1px solid currentColor;
+}
+.status-pill.ok   { color: var(--cyan);  border-color: var(--cyan);  box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+.status-pill.warn { color: var(--red);   border-color: var(--red);   }
+.status-pill.off  { color: var(--muted); border-color: var(--muted); }
+
+.mute-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--muted);
+  font-family: var(--orbitron); font-size: 8px;
+  letter-spacing: 1px; padding: 4px 10px;
+  cursor: pointer; text-transform: uppercase;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 5px;
+}
+.mute-btn:hover { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--glow-c); }
+.mute-btn.muted { color: var(--red); border-color: var(--red); }
+
+/* ── Tabs */
+.tabs {
+  position: relative; z-index: 10;
+  display: flex; border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.tab {
+  flex: 1; padding: 12px 8px;
+  font-family: var(--orbitron); font-size: 9px;
+  letter-spacing: 1.5px; text-transform: uppercase; text-align: center;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+.tab:hover  { color: var(--text); }
+
+/* ── Main panels */
+main { flex: 1; position: relative; z-index: 10; overflow-y: auto; }
+
+.panel { display: none; padding: 16px; flex-direction: column; gap: 14px; }
+.panel.active { display: flex; }
+
+/* ── Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.4;
+}
+
+.card-label {
+  font-family: var(--orbitron); font-size: 8px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px;
+}
+
+/* ── Subscribe button */
+.btn {
+  display: block; width: 100%; padding: 14px;
+  font-family: var(--orbitron); font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  color: #fff; border: none; border-radius: 2px; cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(0,212,255,0.2);
+}
+.btn:hover:not(:disabled) { box-shadow: 0 0 30px rgba(0,212,255,0.4); transform: translateY(-1px); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+.sub-status { margin-top: 10px; font-family: var(--rajdhani); font-size: 13px; color: var(--muted); min-height: 18px; }
+.sub-status.good { color: var(--green); }
+.sub-status.bad  { color: var(--red);   }
+
+/* ── Active signals */
+.signals-grid { display: flex; flex-direction: column; gap: 8px; }
+
+.signal-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 2px;
+  border-left: 3px solid var(--muted);
+  position: relative; overflow: hidden;
+}
+.signal-row.BUY  { border-left-color: var(--green); }
+.signal-row.SELL { border-left-color: var(--red);   }
+.signal-row.BUY::after  { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,255,136,0.04), transparent); }
+.signal-row.SELL::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,45,107,0.04), transparent); }
+
+.signal-sym  { font-family: var(--orbitron); font-size: 11px; font-weight: 700; }
+.signal-tf   { font-family: var(--rajdhani); font-size: 11px; color: var(--muted); margin-top: 1px; }
+.signal-dir  { font-family: var(--orbitron); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+.signal-dir.BUY  { color: var(--green); text-shadow: 0 0 8px rgba(0,255,136,0.5); }
+.signal-dir.SELL { color: var(--red);   text-shadow: 0 0 8px rgba(255,45,107,0.5); }
+
+.no-signal {
+  font-family: var(--orbitron); font-size: 9px; color: var(--muted);
+  text-align: center; padding: 20px 0; letter-spacing: 2px;
+}
+
+/* ── Alert feed */
+.alert-item {
+  border-left: 3px solid var(--muted);
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 0 2px 2px 0;
+  animation: slideIn 0.25s ease;
+}
+.alert-item.BUY     { border-color: var(--green); }
+.alert-item.SELL    { border-color: var(--red);   }
+.alert-item.REMOVED { border-color: var(--muted); }
+
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+.alert-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.alert-level { font-family: var(--orbitron); font-size: 9px; font-weight: 700; letter-spacing: 1.5px; }
+.alert-level.BUY     { color: var(--green); }
+.alert-level.SELL    { color: var(--red);   }
+.alert-level.REMOVED { color: var(--muted); }
+.alert-time  { font-family: var(--rajdhani); font-size: 11px; color: var(--muted); }
+.alert-title { font-size: 14px; font-weight: 700; font-family: var(--rajdhani); }
+.alert-body  { font-size: 12px; color: var(--muted); font-family: var(--rajdhani); margin-top: 2px; }
+
+.feed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.btn-sm {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 2px;
+  font-family: var(--orbitron); font-size: 8px; letter-spacing: 1px;
+  padding: 5px 12px; cursor: pointer; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.btn-sm:hover { color: var(--cyan); border-color: var(--cyan); }
+
+/* ── Per-symbol toggles */
+.symbols-section { margin-bottom: 10px; }
+.symbols-group-label {
+  font-family: var(--orbitron); font-size: 8px; color: var(--cyan);
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 8px 0 6px; border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.symbol-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.symbol-toggle-row:last-child { border-bottom: none; }
+
+.symbol-name { font-family: var(--rajdhani); font-size: 14px; font-weight: 600; }
+.symbol-name .sym-code { font-family: var(--orbitron); font-size: 10px; color: var(--cyan); }
+.symbol-name .sym-full { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; }
+
+/* Toggle switch */
+.toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--border); border-radius: 24px;
+  transition: 0.3s;
+  border: 1px solid var(--border);
+}
+.toggle-slider:before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; left: 2px; bottom: 2px;
+  background: var(--muted); border-radius: 50%;
+  transition: 0.3s;
+}
+.toggle input:checked + .toggle-slider {
+  background: rgba(0,212,255,0.15);
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0,212,255,0.3);
+}
+.toggle input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(0,212,255,0.8);
+}
+
+/* Select all / deselect */
+.bulk-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+.bulk-btn {
+  flex: 1; padding: 8px;
+  font-family: var(--orbitron); font-size: 8px; letter-spacing: 1.5px;
+  text-transform: uppercase; cursor: pointer; border-radius: 2px;
+  border: 1px solid var(--border); background: transparent; color: var(--muted);
+  transition: all 0.2s;
+}
+.bulk-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+/* ── Blink dot */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); vertical-align: middle; margin-right: 6px; }
+.dot.live { background: var(--cyan); animation: blink 1.4s infinite; box-shadow: 0 0 6px var(--cyan); }
+
+/* ── Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--cyan);
+  color: var(--text); font-family: var(--orbitron); font-size: 9px; letter-spacing: 1px;
+  padding: 10px 20px; border-radius: 2px;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none; z-index: 9999; white-space: nowrap;
+  box-shadow: 0 0 20px rgba(0,212,255,0.2);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.empty-state { font-family: var(--orbitron); font-size: 9px; color: var(--muted); text-align: center; padding: 24px 0; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo">VOLARIS X</div>
+    <div class="logo-sub">Volatility Signal Monitor</div>
+  </div>
+  <div class="header-right">
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">
+      <span id="mute-icon">🔔</span>
+      <span id="mute-label">SOUND</span>
+    </button>
+    <div id="conn-status" class="status-pill off">OFFLINE</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('signals')">Signals</div>
+  <div class="tab" onclick="switchTab('alerts')">Alerts</div>
+  <div class="tab" onclick="switchTab('settings')">Settings</div>
+</div>
+
+<main>
+
+  <!-- SIGNALS TAB -->
+  <div class="panel active" id="panel-signals">
+
+    <div class="card">
+      <div class="card-label">Push Notifications</div>
+      <button class="btn" id="sub-btn" onclick="handleSubscribe()">Enable Alerts</button>
+      <div class="sub-status" id="sub-msg">Tap to receive signal alerts on this device.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <span class="dot" id="live-dot"></span>Active Signals
+      </div>
+      <div class="signals-grid" id="signals-grid">
+        <div class="no-signal">SCANNING MARKETS...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ALERTS TAB -->
+  <div class="panel" id="panel-alerts">
+    <div class="card" style="flex:1">
+      <div class="feed-header">
+        <div class="card-label" style="margin:0"><span class="dot" id="live-dot2"></span>Alert Feed</div>
+        <button class="btn-sm" onclick="clearFeed()">Clear</button>
+      </div>
+      <div id="alert-list"><div class="empty-state">NO ALERTS YET</div></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="panel" id="panel-settings">
+
+    <div class="card">
+      <div class="card-label">Alert Preferences</div>
+      <div style="font-family:var(--rajdhani);font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Toggle which indices send you alerts. Changes save instantly on your device.
+      </div>
+      <div class="bulk-btns">
+        <button class="bulk-btn" onclick="setAll(true)">Enable All</button>
+        <button class="bulk-btn" onclick="setAll(false)">Disable All</button>
+      </div>
+      <div id="symbol-toggles"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── All 26 volatility symbols
+const ALL_SYMBOLS = [
+  // Standard
+  { code: 'VOL10',     full: 'Volatility 10 Index',          group: 'Standard' },
+  { code: 'VOL15',     full: 'Volatility 15 Index',          group: 'Standard' },
+  { code: 'VOL25',     full: 'Volatility 25 Index',          group: 'Standard' },
+  { code: 'VOL30',     full: 'Volatility 30 Index',          group: 'Standard' },
+  { code: 'VOL50',     full: 'Volatility 50 Index',          group: 'Standard' },
+  { code: 'VOL75',     full: 'Volatility 75 Index',          group: 'Standard' },
+  { code: 'VOL90',     full: 'Volatility 90 Index',          group: 'Standard' },
+  { code: 'VOL100',    full: 'Volatility 100 Index',         group: 'Standard' },
+  { code: 'VOL150',    full: 'Volatility 150 Index',         group: 'Standard' },
+  { code: 'VOL250',    full: 'Volatility 250 Index',         group: 'Standard' },
+  // 1s
+  { code: 'VOL5(1s)',  full: 'Volatility 5 (1s) Index',      group: '1-Second' },
+  { code: 'VOL10(1s)', full: 'Volatility 10 (1s) Index',     group: '1-Second' },
+  { code: 'VOL15(1s)', full: 'Volatility 15 (1s) Index',     group: '1-Second' },
+  { code: 'VOL25(1s)', full: 'Volatility 25 (1s) Index',     group: '1-Second' },
+  { code: 'VOL30(1s)', full: 'Volatility 30 (1s) Index',     group: '1-Second' },
+  { code: 'VOL50(1s)', full: 'Volatility 50 (1s) Index',     group: '1-Second' },
+  { code: 'VOL75(1s)', full: 'Volatility 75 (1s) Index',     group: '1-Second' },
+  { code: 'VOL90(1s)', full: 'Volatility 90 (1s) Index',     group: '1-Second' },
+  { code: 'VOL100(1s)',full: 'Volatility 100 (1s) Index',    group: '1-Second' },
+  { code: 'VOL150(1s)',full: 'Volatility 150 (1s) Index',    group: '1-Second' },
+  { code: 'VOL250(1s)',full: 'Volatility 250 (1s) Index',    group: '1-Second' },
+  // High Frequency
+  { code: 'HFV10',    full: 'High Frequency Vol 10 Index',   group: 'High Frequency' },
+  { code: 'HFV25',    full: 'High Frequency Vol 25 Index',   group: 'High Frequency' },
+  { code: 'HFV50',    full: 'High Frequency Vol 50 Index',   group: 'High Frequency' },
+  { code: 'HFV75',    full: 'High Frequency Vol 75 Index',   group: 'High Frequency' },
+  { code: 'HFV100',   full: 'High Frequency Vol 100 Index',  group: 'High Frequency' },
+];
+
+const STORAGE_KEY  = 'volarix_alerts';
+const MUTE_KEY     = 'volarix_muted';
+const PREFS_KEY    = 'volarix_prefs';
+const TOKEN_KEY    = 'volarix_token';
+
+let alerts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let isMuted = localStorage.getItem(MUTE_KEY) === 'true';
+// preferences: { "VOL75": true/false, ... } — default true for all
+let preferences = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+
+updateMuteUI();
+renderAlerts();
+renderSymbolToggles();
+
+// Load active signals
+fetch('/active-signals')
+  .then(r => r.json())
+  .then(d => renderActiveSignals(d.signals || []))
+  .catch(() => renderActiveSignals([]));
+
+checkExistingSubscription();
+
+// Foreground FCM messages
+document.addEventListener('deviceready', () => {
+  if (window.Capacitor?.Plugins?.FirebaseMessaging) {
+    const { FirebaseMessaging } = window.Capacitor.Plugins;
+    FirebaseMessaging.addListener('notificationReceived', (event) => {
+      const d = event.notification.data || {};
+      handleIncomingAlert({
+        title:     event.notification.title || 'Volaris X',
+        body:      event.notification.body  || '',
+        level:     d.level     || '',
+        symbol:    d.symbol    || '',
+        timeframe: d.timeframe || '',
+        timestamp: d.timestamp ? parseInt(d.timestamp) : Date.now()
+      });
+    });
+  }
+}, { once: true });
+
+// ── Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['signals','alerts','settings'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Active signals panel
+function renderActiveSignals(signals) {
+  const grid = document.getElementById('signals-grid');
+  if (!signals.length) {
+    grid.innerHTML = '<div class="no-signal">NO ACTIVE SIGNALS</div>';
+    return;
+  }
+  grid.innerHTML = signals.map(s => {
+    const dir = (s.level || '').toUpperCase();
+    return `<div class="signal-row ${dir}">
+      <div>
+        <div class="signal-sym">${esc(s.symbol || '')}</div>
+        <div class="signal-tf">${esc(s.timeframe || '')}</div>
+      </div>
+      <span class="signal-dir ${dir}">${dir === 'BUY' ? '▲' : '▼'} ${dir}</span>
+    </div>`;
+  }).join('');
+}
+
+function handleIncomingAlert(payload) {
+  addAlert(payload);
+  fetch('/active-signals').then(r => r.json()).then(d => renderActiveSignals(d.signals || [])).catch(() => {});
+}
+
+// ── Subscribe
+async function checkExistingSubscription() {
+  if (!window.Capacitor?.Plugins?.FirebaseMessaging) {
+    setMsg('Please use the installed app for alerts.', 'bad');
+    document.getElementById('sub-btn').disabled = true;
+    return;
+  }
+  const { FirebaseMessaging } = window.Capacitor.Plugins;
+  try {
+    const p = await FirebaseMessaging.checkPermissions();
+    if (p.receive === 'granted') {
+      setMsg('✓ Alerts active on this device.', 'good');
+      document.getElementById('sub-btn').textContent = 'Subscribed ✓';
+      document.getElementById('sub-btn').disabled = true;
+      document.getElementById('live-dot').classList.add('live');
+      document.getElementById('live-dot2').classList.add('live');
+      setConn('ok');
+    }
+  } catch {}
+}
+
+async function handleSubscribe() {
+  if (!window.Capacitor?.Plugins?.FirebaseMessaging) {
+    setMsg('Please use the installed app for alerts.', 'bad');
+    return;
+  }
+  const { FirebaseMessaging } = window.Capacitor.Plugins;
+  try {
+    const perm = await FirebaseMessaging.requestPermissions();
+    if (perm.receive !== 'granted') { setMsg('Permission denied. Enable in settings.', 'bad'); return; }
+
+    const { token } = await FirebaseMessaging.getToken();
+    localStorage.setItem(TOKEN_KEY, token);
+
+    const resp = await fetch('/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, platform: 'android', preferences })
+    });
+
+    if (resp.ok) {
+      setMsg('✓ Alerts active on this device.', 'good');
+      document.getElementById('sub-btn').textContent = 'Subscribed ✓';
+      document.getElementById('sub-btn').disabled = true;
+      document.getElementById('live-dot').classList.add('live');
+      document.getElementById('live-dot2').classList.add('live');
+      setConn('ok');
+    } else {
+      setMsg('Server error. Try again.', 'bad');
+    }
+  } catch (err) {
+    setMsg('Error: ' + err.message, 'bad');
+  }
+}
+
+// ── Symbol toggles
+function renderSymbolToggles() {
+  const container = document.getElementById('symbol-toggles');
+  const groups = {};
+  ALL_SYMBOLS.forEach(s => {
+    if (!groups[s.group]) groups[s.group] = [];
+    groups[s.group].push(s);
+  });
+
+  container.innerHTML = Object.entries(groups).map(([groupName, syms]) => `
+    <div class="symbols-section">
+      <div class="symbols-group-label">${groupName}</div>
+      ${syms.map(s => {
+        const enabled = preferences[s.code] !== false;
+        return `<div class="symbol-toggle-row">
+          <div class="symbol-name">
+            <span class="sym-code">${esc(s.code)}</span>
+            <span class="sym-full">${esc(s.full)}</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleSymbol('${s.code}', this.checked)"/>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+function toggleSymbol(code, enabled) {
+  preferences[code] = enabled;
+  localStorage.setItem(PREFS_KEY, JSON.stringify(preferences));
+  syncPreferencesToServer();
+  showToast(enabled ? `${code} alerts ON` : `${code} alerts OFF`);
+}
+
+function setAll(enabled) {
+  ALL_SYMBOLS.forEach(s => preferences[s.code] = enabled);
+  localStorage.setItem(PREFS_KEY, JSON.stringify(preferences));
+  renderSymbolToggles();
+  syncPreferencesToServer();
+  showToast(enabled ? 'All alerts enabled' : 'All alerts disabled');
+}
+
+async function syncPreferencesToServer() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return;
+  try {
+    await fetch('/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, preferences })
+    });
+  } catch {}
+}
+
+// ── Mute
+function toggleMute() {
+  isMuted = !isMuted;
+  localStorage.setItem(MUTE_KEY, isMuted);
+  updateMuteUI();
+  showToast(isMuted ? '🔇 Sound muted' : '🔔 Sound on');
+}
+function updateMuteUI() {
+  const btn = document.getElementById('mute-btn');
+  document.getElementById('mute-icon').textContent  = isMuted ? '🔇' : '🔔';
+  document.getElementById('mute-label').textContent = isMuted ? 'MUTED' : 'SOUND';
+  btn.classList.toggle('muted', isMuted);
+}
+
+// ── Alert feed
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  if (!alerts.length) { list.innerHTML = '<div class="empty-state">NO ALERTS YET</div>'; return; }
+  list.innerHTML = alerts.slice(0, 40).map(a => {
+    const time = new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `<div class="alert-item ${a.level || ''}">
+      <div class="alert-top">
+        <span class="alert-level ${a.level || ''}">${a.level || 'ALERT'}</span>
+        <span class="alert-time">${time}</span>
+      </div>
+      <div class="alert-title">${esc(a.title || '')}</div>
+      <div class="alert-body">${esc(a.body || '')}</div>
+    </div>`;
+  }).join('');
+}
+
+function addAlert(data) {
+  alerts.unshift(data);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts.slice(0, 50)));
+  renderAlerts();
+  if (!isMuted) playAlertSound();
+}
+
+// ── Audio
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function scheduleBeeps(ctx) {
+  const duration = 8.0, beepLen = 0.18, gap = 0.12, cycle = beepLen + gap;
+  const now = ctx.currentTime;
+  for (let t = 0; t < duration; t += cycle) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now + t);
+    gain.gain.setValueAtTime(0, now + t);
+    gain.gain.linearRampToValueAtTime(0.6, now + t + 0.01);
+    gain.gain.linearRampToValueAtTime(0, now + t + beepLen);
+    osc.start(now + t); osc.stop(now + t + beepLen);
+  }
+}
+
+async function playAlertSound() {
+  if (isMuted) return;
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+    if (ctx.state === 'running') scheduleBeeps(ctx);
+  } catch (e) { console.warn('Audio failed:', e.message); }
+}
+
+document.addEventListener('click', () => {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+}, { once: true });
+
+// ── Helpers
+function clearFeed() { alerts = []; localStorage.removeItem(STORAGE_KEY); renderAlerts(); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setMsg(msg, cls) { const el = document.getElementById('sub-msg'); el.textContent = msg; el.className = 'sub-status' + (cls ? ' ' + cls : ''); }
+function setConn(s) { const el = document.getElementById('conn-status'); el.textContent = s === 'ok' ? 'ONLINE' : s === 'warn' ? 'PARTIAL' : 'OFFLINE'; el.className = 'status-pill ' + s; }
+</script>
+</body>
+</html>
